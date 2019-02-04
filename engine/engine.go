@@ -1,6 +1,9 @@
-package tictactoe
+package engine
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 // Maybe a bit much, if zero value of primitives in language spec change
 var zeroString string
@@ -12,6 +15,7 @@ type game interface {
 	Register(token rune) (game, error)
 	StartGame(token rune) (game, error)
 	Move(token rune, x int, y int) (game, error)
+	GetState() GameState
 }
 
 type gameError struct {
@@ -24,13 +28,13 @@ func (err *gameError) Error() string {
 	return err.msg
 }
 
-type gameState int
+type GameState int
 
 const (
-	registration gameState = iota + 1
-	play
-	won
-	draw
+	Registration GameState = iota + 1
+	Play
+	Won
+	Draw
 )
 
 type goBoard struct {
@@ -39,11 +43,11 @@ type goBoard struct {
 	tokens       []rune
 	whosTurn     int
 	board        [][]rune
-	state        gameState
+	state        GameState
 	tokensPlaced int
 }
 
-func newGoBoard(x, y int, boardName string, admin rune) (*goBoard, error) {
+func NewGoBoard(x, y int, boardName string, admin rune) (*goBoard, error) {
 	b := new(goBoard)
 	if boardName == zeroString {
 		return b, &gameError{"ZeroName"}
@@ -61,12 +65,12 @@ func newGoBoard(x, y int, boardName string, admin rune) (*goBoard, error) {
 	for row := range b.board {
 		b.board[row] = make([]rune, x)
 	}
-	// Enter registration period - doubles as check of successful board
-	b.state = registration
+	// Enter Registration period - doubles as check of successful board
+	b.state = Registration
 	return b, nil
 }
 
-func (gb goBoard) Register(newToken rune) (game, error) {
+func (gb *goBoard) Register(newToken rune) (game, error) {
 	// Could be made more efficient by handling newToken slice
 	// but writing PoC
 	for _, takenToken := range gb.tokens {
@@ -80,16 +84,16 @@ func (gb goBoard) Register(newToken rune) (game, error) {
 	return gb, nil
 }
 
-func (gb goBoard) StartGame(token rune) (game, error) {
+func (gb *goBoard) StartGame(token rune) (game, error) {
 	if token == gb.tokens[0] {
-		gb.state = play
+		gb.state = Play
 		return gb, nil
 	}
 	return gb, &gameError{"NotAdmin"}
 }
 
-func (gb goBoard) Move(token rune, x int, y int) (game, error) {
-	if gb.state != play {
+func (gb *goBoard) Move(token rune, x int, y int) (game, error) {
+	if gb.state != Play {
 		return gb, &gameError{fmt.Sprintf("%vState", gb.state)}
 	}
 	if token == gb.tokens[gb.whosTurn] {
@@ -128,10 +132,10 @@ func (gb goBoard) Move(token rune, x int, y int) (game, error) {
 				}
 			}
 			if winningMove {
-				gb.state = won
+				gb.state = Won
 				return gb, nil
 			} else if gb.tokensPlaced >= len(gb.board)*len(gb.board[0]) {
-				gb.state = draw
+				gb.state = Draw
 				return gb, nil
 			}
 			gb.whosTurn++
@@ -143,14 +147,31 @@ func (gb goBoard) Move(token rune, x int, y int) (game, error) {
 		}
 		return gb, nil
 	}
-	// Could be due to player not existing or not his turn
+	// Could be due to Player not existing or not his turn
 	return gb, &gameError{"InvalidPlayer"}
+}
+
+func (gb *goBoard) GetState() GameState {
+	return gb.state
+}
+
+func (gb *goBoard) String() string {
+	var sb strings.Builder
+	for row := range gb.board {
+		sb.WriteRune('|')
+		for column := range gb.board[row] {
+			sb.WriteRune(gb.board[row][column])
+			sb.WriteRune('|')
+		}
+		sb.WriteString("\n")
+	}
+	return sb.String()
 }
 
 func onBoard(board [][]rune, x, y int) bool {
 	dy := len(board)
 	dx := len(board[0])
-	if x >= dx-1 || y >= dy-1 || x < 0 || y < 0 {
+	if x > dx-1 || y > dy-1 || x < 0 || y < 0 {
 		return false
 	}
 	return true
