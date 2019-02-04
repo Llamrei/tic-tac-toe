@@ -13,11 +13,15 @@ func main() {
 
 	fmt.Println("Creating tictactoe engine!")
 	// Initially just a 3x3
-	classicGame, e := engine.NewGoBoard(3, 3, "classic", 'X')
+	classicGame, e := engine.NewGoBoard(5, 5, "classic", 'X')
 	if e != nil {
 		log.Panic(e)
 	}
 	_, e = classicGame.Register('O')
+	if e != nil {
+		log.Panic(e)
+	}
+	_, e = classicGame.Register('T')
 	if e != nil {
 		log.Panic(e)
 	}

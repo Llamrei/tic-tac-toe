@@ -13,7 +13,7 @@ func main() {
 
 	fmt.Println("Creating tictactoe engine!")
 	// Initially just a 3x3
-	classicGame, e := engine.NewGoBoard(3, 3, "classic", 'X')
+	classicGame, e := engine.NewGoBoard(5, 5, "classic", 'X')
 	if e != nil {
 		log.Panic(e)
 	}
@@ -25,9 +25,22 @@ func main() {
 	if e != nil {
 		log.Panic(e)
 	}
+	oneDGame, e := engine.NewGoBoard(1, 20, "1D", 'F')
+	if e != nil {
+		log.Panic(e)
+	}
+	_, e = oneDGame.Register('T')
+	if e != nil {
+		log.Panic(e)
+	}
+	_, e = oneDGame.StartGame('F')
+	if e != nil {
+		log.Panic(e)
+	}
 
 	fmt.Println("Starting server")
 	http.HandleFunc("/", gameHandler(classicGame))
+	http.HandleFunc("/1D", gameHandler(oneDGame))
 	log.Fatal(http.ListenAndServe(":80", nil))
 }
 
