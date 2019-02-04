@@ -5,17 +5,18 @@ import (
 	"strings"
 )
 
-// Maybe a bit much, if zero value of primitives in language spec change
+// Maybe a bit much, enables control of 'zero' values and in case language spec changes
 var zeroString string
-var zeroRune rune
+var zeroRune rune = ' '
 
-type game interface {
+type Game interface {
 	// Done so you could implement a board that stores values in db
 	// but PoC
-	Register(token rune) (game, error)
-	StartGame(token rune) (game, error)
-	Move(token rune, x int, y int) (game, error)
+	Register(token rune) (Game, error)
+	StartGame(token rune) (Game, error)
+	Move(token rune, x int, y int) (Game, error)
 	GetState() GameState
+	String() string
 }
 
 type gameError struct {
@@ -38,7 +39,7 @@ const (
 )
 
 type goBoard struct {
-	// Struct for storing game state on the heap
+	// Struct for storing Game state on the heap
 	name         string
 	tokens       []rune
 	whosTurn     int
@@ -47,6 +48,8 @@ type goBoard struct {
 	tokensPlaced int
 }
 
+// NewGoBoard Creates a new tictactoe board with in-memory (not database) storage.
+// Admin token is needed to start the Game, will be first in turn order.
 func NewGoBoard(x, y int, boardName string, admin rune) (*goBoard, error) {
 	b := new(goBoard)
 	if boardName == zeroString {
@@ -64,27 +67,35 @@ func NewGoBoard(x, y int, boardName string, admin rune) (*goBoard, error) {
 	b.board = make([][]rune, y)
 	for row := range b.board {
 		b.board[row] = make([]rune, x)
+		for column := range b.board[row] {
+			b.board[row][column] = zeroRune
+		}
 	}
 	// Enter Registration period - doubles as check of successful board
 	b.state = Registration
 	return b, nil
 }
 
-func (gb *goBoard) Register(newToken rune) (game, error) {
-	// Could be made more efficient by handling newToken slice
-	// but writing PoC
-	for _, takenToken := range gb.tokens {
-		if newToken == takenToken {
-			return gb, &gameError{"TokenTaken"}
-		} else if newToken == zeroRune {
-			return gb, &gameError{"ZeroToken"}
+// Register Adds a token to the list of valid tokens - can only happen during registration
+func (gb *goBoard) Register(newToken rune) (Game, error) {
+	if gb.state == Registration {
+		// Could be made more efficient by handling newToken slice
+		// but writing PoC
+		for _, takenToken := range gb.tokens {
+			if newToken == takenToken {
+				return gb, &gameError{"TokenTaken"}
+			} else if newToken == zeroRune {
+				return gb, &gameError{"ZeroToken"}
+			}
 		}
+		gb.tokens = append(gb.tokens, newToken)
+		return gb, nil
 	}
-	gb.tokens = append(gb.tokens, newToken)
-	return gb, nil
+	return gb, &gameError{"NotRegistering"}
 }
 
-func (gb *goBoard) StartGame(token rune) (game, error) {
+// StartGame Given the Game's admin token, can finish registration period
+func (gb *goBoard) StartGame(token rune) (Game, error) {
 	if token == gb.tokens[0] {
 		gb.state = Play
 		return gb, nil
@@ -92,7 +103,8 @@ func (gb *goBoard) StartGame(token rune) (game, error) {
 	return gb, &gameError{"NotAdmin"}
 }
 
-func (gb *goBoard) Move(token rune, x int, y int) (game, error) {
+// Move Try to place a token on x,y - can only happen during play
+func (gb *goBoard) Move(token rune, x int, y int) (Game, error) {
 	if gb.state != Play {
 		return gb, &gameError{fmt.Sprintf("%vState", gb.state)}
 	}
@@ -164,6 +176,13 @@ func (gb *goBoard) String() string {
 			sb.WriteRune('|')
 		}
 		sb.WriteString("\n")
+	}
+	if gb.state == Won {
+		sb.WriteString(fmt.Sprintf("%v won!\n", string(gb.tokens[gb.whosTurn])))
+	} else if gb.state == Draw {
+		sb.WriteString("Draw!\n")
+	} else {
+		sb.WriteString(fmt.Sprintf("%v to move\n", string(gb.tokens[gb.whosTurn])))
 	}
 	return sb.String()
 }
