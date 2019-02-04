@@ -74,7 +74,6 @@ func gameHandler(g engine.Game) http.HandlerFunc {
 						fmt.Fprintf(w, "Please send queries of form in README")
 					}
 					_, e := g.Move(tokenSlice[0], x, y)
-					fmt.Println(e)
 					if e != nil {
 						fmt.Fprintf(w, "%s", e)
 					} else {
