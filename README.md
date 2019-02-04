@@ -16,3 +16,5 @@ To play, on client (if using browser, disable caching for best results):
 * All interaction is through GET request as front-end was not part of assignment and manually sending POSTs isn't very user friendly. Ideally would want a nice interactive front end.
 
 * Ability for # of games, nxn grids and # of player games to be manageable through requests to server.
+
+* Implement some tests
